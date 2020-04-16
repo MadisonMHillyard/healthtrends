@@ -9,9 +9,9 @@ class Migration(migrations.Migration):
 
     dependencies = [
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
-        ('socialaccount', '0003_extra_data_default_dict'),
+        # ('socialaccount', '0003_extra_data_default_dict'),
         ('admin', '0003_logentry_add_action_flag_choices'),
-        ('account', '0002_email_max_length'),
+        # ('account', '0002_email_max_length'),
         ('healthtrends', '0005_auto_20200415_1845'),
     ]
 

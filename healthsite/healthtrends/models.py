@@ -7,6 +7,17 @@ from django.dispatch import receiver
 # Create your models here.
 
 
+class Query(models.Model):
+    folder = models.CharField(max_length=200)
+    spreadsheet = models.CharField(max_length=200)
+    number_runs = models.IntegerField()
+    frequency = models.IntegerField()
+    geographic_area = models.CharField(max_length=100)
+    start_date = models.DateField()
+    end_data = models.DateField()
+    terms = models.CharField(max_length=10000)
+
+
 class GglCred(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE)
     refresh_token = models.CharField(max_length=1000, default='')
@@ -24,26 +35,3 @@ def create_user_gglcred(sender, instance, created, **kwargs):
 @receiver(post_save, sender=User)
 def save_user_gglcred(sender, instance, **kwargs):
     instance.gglcred.save()
-# class GUserCustom(models.Model):
-#     user = models.OneToOneField(User, related_name='gg_cred', on_delete=models.CASCADE, primary_key=True)
-#     refresh_token = models.CharField(max_length=1000)
-#     access_token = models.CharField(max_length=1000)
-#     id_token = models.CharField(max_length=1000)
-#     valid = models.BooleanField()
-
-
-# class GUserCustomAdmin(admin.ModelAdmin):
-#     pass
-
-
-# class CustomUser(AbstractUser):
-#     username = models.EmailField(('email address'), unique=True)
-#     name = models.CharField(max_length=100)
-#     refresh_token = models.CharField(max_length=1000)
-#     access_token = models.CharField(max_length=1000)
-#     id_token = models.CharField(max_length=1000)
-
-#     REQUIRED_FIELDS = []
-
-#     def __str__(self):
-#         return self.name

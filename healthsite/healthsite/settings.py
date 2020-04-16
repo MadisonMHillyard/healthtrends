@@ -40,10 +40,10 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'django.contrib.sites',
 
-    'allauth',
-    'allauth.account',
-    'allauth.socialaccount',
-    'allauth.socialaccount.providers.google'
+    # 'allauth',
+    # 'allauth.account',
+    # 'allauth.socialaccount',
+    # 'allauth.socialaccount.providers.google'
 ]
 
 MIDDLEWARE = [
@@ -178,8 +178,8 @@ SOCIALACCOUNT_PROVIDERS = {
     }
 }
 
-SITE_ID = 1
-ACCOUNT_EMAIL_REQUIRED = True
-ACCOUNT_EMAIL_VERIFICATION = False
-ACCOUNT_USERNAME_REQUIRED = False
-LOGIN_REDIRECT_URL = "/"
+# SITE_ID = 1
+# ACCOUNT_EMAIL_REQUIRED = True
+# ACCOUNT_EMAIL_VERIFICATION = False
+# ACCOUNT_USERNAME_REQUIRED = False
+# LOGIN_REDIRECT_URL = "/"
