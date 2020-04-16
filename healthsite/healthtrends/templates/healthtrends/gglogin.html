@@ -1,0 +1,79 @@
+{% extends "healthtrends/base.html" %}
+{% load static %}
+
+{% block title %}Connect Google Account{% endblock %}
+
+{% block additional_head_content %}
+    <meta name="google-signin-scope" content="profile email">
+    <meta name="google-signin-client_id" content="135294837231-342jgurpklaa1nhg563a986ethc2kdev.apps.googleusercontent.com">
+
+    <script src="//ajax.googleapis.com/ajax/libs/jquery/1.8.2/jquery.min.js">
+    </script>
+    <script src="https://apis.google.com/js/client:platform.js?onload=start" async defer>
+    </script>
+
+    <!-- <script src="https://apis.google.com/js/platform.js" async defer></script> -->
+    <script src="../../static/js/ggAcct.js"></script>
+    <script>
+    function start() {
+      gapi.load('auth2', function() {
+        // auth2 = gapi.auth2.init({
+        auth2 = gapi.auth2.getAuthInstance({
+          client_id: "135294837231-342jgurpklaa1nhg563a986ethc2kdev.apps.googleusercontent.com",
+          // Scopes to request in addition to 'profile' and 'email'
+          scope: 'https://www.googleapis.com/auth/drive https://www.googleapis.com/auth/spreadsheets'
+        });
+      });
+    }
+  </script>
+{% endblock %}
+
+{% block content %}
+  <h2>Login</h2>
+    <div id="outer-pane" class="centered-root">
+      <h>Welcome to the HealthCare Trends Tool</h>
+      <p>Please sign in to your Google Account to get started!</p>
+      <div class="g-signin2" id="signinButton" data-theme="dark"></div>
+      <div>
+        <a href="{% url 'healthtrends:query' %}" id="goToQuery">Make a HealthCare Trends Query</a>
+      </div>
+      <a href="#" id="disconnectButton" onclick="revokeAllScopes();">Disconnect your Google Account</a>
+    </div>
+
+  <script>
+    // $('#signinButton').click(function() {
+    //   // signInCallback defined in step 6.
+    //   auth2.grantOfflineAccess().then(signInCallback);
+    // });
+    // function signInCallback(authResult) {
+    //   if (authResult) {
+    //     console.log(authResult)
+    //     // Hide the sign-in button now that the user is authorized, for example:
+    //     $('#signinButton').attr('style', 'display: none');
+    //     $('#goToQuery').attr('style', 'display: block');
+    //     // Send the code to the server
+    //     $.ajax({
+    //       type: 'POST',
+    //       url: window.location.href + '/tokensignin',
+    //       // Always include an `X-Requested-With` header in every AJAX request,
+    //       // to protect against CSRF attacks.
+    //       headers: {
+    //         'X-Requested-With': 'XMLHttpRequest',
+    //         'X-CSRFToken': getCookie('csrftoken')
+    //       },
+    //       contentType: 'application/octet-stream; charset=utf-8',
+    //       success: function(result) {
+    //         console.log(result)
+    //         return result;
+    //         // Handle or verify the server response.
+    //       },
+    //       processData: false,
+    //       data: authResult['code']
+    //     });
+    //   } else {
+    //     console.log("ERROR IN AUTH CALLBACK");
+    //     // There was an error.
+    //   }
+    // }
+    </script>
+{% endblock %}

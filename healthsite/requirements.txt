@@ -1,0 +1,5 @@
+Django==3.0.5
+PyMySQL==0.9.3
+apiclient==1.0.4
+httplib2==0.17.2
+oauth2client==4.1.3
