@@ -39,7 +39,9 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'django.contrib.sites',
-
+    'rest_framework',
+    'rest_framework.authtoken',
+    'frontend',
     # 'allauth',
     # 'allauth.account',
     # 'allauth.socialaccount',
@@ -159,27 +161,30 @@ STATIC_URL = '/static/'
 
 CLIENT_SECRET = BASE_DIR + '\\credentials.json'
 # Provider specific settings
-SOCIALACCOUNT_PROVIDERS = {
-    'google': {
-        'SCOPE': [
-            'profile',
-            'email',
-            'https://www.googleapis.com/auth/drive',
-            'https://www.googleapis.com/auth/spreadsheets'
-        ],
-        # For each OAuth based provider, either add a ``SocialApp``
-        # (``socialaccount`` app) containing the required client
-        # credentials, or list them here:
-        'APP': {
-            'client_id': '135294837231-342jgurpklaa1nhg563a986ethc2kdev.apps.googleusercontent.com',
-            'secret': 'OP76Y3CeR8hy-CoRoNFV0oKi',
-            'key': ''
-        }
-    }
-}
+# SOCIALACCOUNT_PROVIDERS = {
+#     'google': {
+#         'SCOPE': [
+#             'profile',
+#             'email',
+#             'https://www.googleapis.com/auth/drive',
+#             'https://www.googleapis.com/auth/spreadsheets'
+#         ],
+#         # For each OAuth based provider, either add a ``SocialApp``
+#         # (``socialaccount`` app) containing the required client
+#         # credentials, or list them here:
+#         'APP': {
+#             'client_id': '135294837231-342jgurpklaa1nhg563a986ethc2kdev.apps.googleusercontent.com',
+#             'secret': 'OP76Y3CeR8hy-CoRoNFV0oKi',
+#             'key': ''
+#         }
+#     }
+# }
 
-# SITE_ID = 1
-# ACCOUNT_EMAIL_REQUIRED = True
-# ACCOUNT_EMAIL_VERIFICATION = False
-# ACCOUNT_USERNAME_REQUIRED = False
-# LOGIN_REDIRECT_URL = "/"
+REST_FRAMEWORK = {
+    'DEFAULT_RENDERER_CLASSES': (
+        'rest_framework.renderers.JSONRenderer',
+    ),
+    'DEFAULT_AUTHENTICATION_CLASSES': (
+      'rest_framework.authentication.TokenAuthentication',
+    )
+}
