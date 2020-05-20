@@ -9,9 +9,14 @@ from oauth2client import client
 from healthsite.settings import CLIENT_SECRET
 from django.contrib.auth.decorators import login_required
 from django.contrib.auth.models import User
-
+from django.views.generic import View
+import os
+from healthsite import settings
+from django.views.decorators.csrf import csrf_exempt
+from rest_framework.decorators import action
 # Create your views here.
 
+drive_service = None
 
 def index(request):
     return HttpResponseRedirect('home')
@@ -58,7 +63,7 @@ def tokensignin(request):
     # Exchange auth code for access token, refresh token, and ID token
     credentials = client.credentials_from_clientsecrets_and_code(
         CLIENT_SECRET_FILE,
-        ['https://www.googleapis.com/auth/drive', 'https://www.googleapis.com/auth/spreadsheets','profile', 'email'],
+        ['https://www.googleapis.com/auth/drive', 'https://www.googleapis.com/auth/spreadsheets', 'profile', 'email'],
         auth_code)
 
     # Call Google API
@@ -72,9 +77,40 @@ def tokensignin(request):
     email = credentials.id_token['email']
     return render(request, 'healthtrends/login.html')
 
-
+@csrf_exempt
 def query(request):
-    return render(request, 'healthtrends/query.html')
+    print("HERE")
+    try:
+        print(request.body.decode("utf-8"))
+        if drive_service:
+            return HttpResponse("Please connect to your google account to complete a Query")
+        return HttpResponse("Querying HealthApi")
+    except:
+        return HttpResponse(":( Url is Not Working")
+    return HttpResponse(":( Url is Not Working")
+    # return render(request, 'healthtrends/query.html')
+
+
+class FrontendAppView(View):
+    """
+    Serves the compiled frontend entry point (only works if you have run `yarn
+    run build`).
+    """
+    def get(self, request):
+        print(os.path.join(settings.REACT_APP_DIR, 'build', 'index.html'))
+        try:
+            with open(os.path.join(settings.REACT_APP_DIR, 'build', 'index.html')) as f:
+                return HttpResponse(f.read())
+        except FileNotFoundError:
+            logging.exception('Production build of app not found')
+            return HttpResponse(
+                """
+                This URL is only used when you have built the production
+                version of the app. Visit http://localhost:3000/ instead, or
+                run `yarn run build` to test the production version.
+                """,
+                status=501,
+            )
 
 
 def update_gglcred(request, user_id, credentials):

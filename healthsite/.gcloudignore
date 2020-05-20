@@ -16,5 +16,8 @@ venv/
 htmlcov/
 .vscode/
 
+/setup.cfg
+frontend/node_modules/
+node_modules
 # Python pycache:
 __pycache__/

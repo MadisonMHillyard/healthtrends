@@ -7,15 +7,15 @@ from django.dispatch import receiver
 # Create your models here.
 
 
-class Query(models.Model):
-    folder = models.CharField(max_length=200)
-    spreadsheet = models.CharField(max_length=200)
-    number_runs = models.IntegerField()
-    frequency = models.IntegerField()
-    geographic_area = models.CharField(max_length=100)
-    start_date = models.DateField()
-    end_data = models.DateField()
-    terms = models.CharField(max_length=10000)
+# class Query(models.Model):
+#     folder = models.CharField(max_length=200)
+#     spreadsheet = models.CharField(max_length=200)
+#     number_runs = models.IntegerField()
+#     frequency = models.IntegerField()
+#     geographic_area = models.CharField(max_length=100)
+#     start_date = models.DateField()
+#     end_data = models.DateField()
+#     terms = models.CharField(max_length=10000)
 
 
 class GglCred(models.Model):

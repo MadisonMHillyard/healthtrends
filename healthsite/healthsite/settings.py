@@ -39,7 +39,8 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'django.contrib.sites',
-
+    'rest_framework',
+    'corsheaders',
     # 'allauth',
     # 'allauth.account',
     # 'allauth.socialaccount',
@@ -47,6 +48,7 @@ INSTALLED_APPS = [
 ]
 
 MIDDLEWARE = [
+    'corsheaders.middleware.CorsMiddleware',
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -56,6 +58,16 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
+CORS_ORIGIN_ALLOW_ALL = True
+CORS_ORIGIN_WHITELIST = (
+       'http://localhost:3000',
+       'http://127.0.0.1:8000',
+       'http://localhost:8000',
+)
+CORS_ALLOW_METHODS = (
+        'GET',
+        'POST',
+    )
 ROOT_URLCONF = 'healthsite.urls'
 
 TEMPLATES = [
@@ -178,7 +190,11 @@ SOCIALACCOUNT_PROVIDERS = {
     }
 }
 
-# SITE_ID = 1
+SITE_ID = 1
+REACT_APP_DIR = os.path.join(BASE_DIR, 'frontend') 
+STATICFILES_DIRS = [
+    os.path.join(REACT_APP_DIR, 'build', 'static'),
+]
 # ACCOUNT_EMAIL_REQUIRED = True
 # ACCOUNT_EMAIL_VERIFICATION = False
 # ACCOUNT_USERNAME_REQUIRED = False
