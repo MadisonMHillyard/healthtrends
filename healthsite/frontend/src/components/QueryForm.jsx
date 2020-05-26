@@ -1,13 +1,12 @@
 import React, { Component } from 'react';
-import Footer from './Footer';
-import Header from './Header';
-import DateInput from './DateInput';
+// import DateInput from './DateInput';
 import WorkingPopup from './WorkingPopup';
-import Form from 'react-bootstrap/Form';
 import { format, addWeeks, subWeeks, parse, isFuture, differenceInWeeks } from 'date-fns'
 import axios from "axios";
 import GoogleLogin from 'react-google-login';
-import getCookie from './../helper';
+// import getCookie from './../helper';
+
+import geoCodes from './../data/geo_code.json'
 
 
 var $ = require('jquery');
@@ -20,11 +19,12 @@ export default class QueryForm extends Component {
         this.state = {
             showPopup: false,
             folderLink: '',
-            folder: 'First Test',
+            folder: '',
             spreadsheet: '',
             numRuns: '',
             freq: 'week',
             geo: 'us',
+            geo_level: 'country',
             startDate: '',
             endDate: '',
             numWeek: '',
@@ -34,6 +34,8 @@ export default class QueryForm extends Component {
                 folder: '',
                 spreadsheet: '',
                 numRuns: '',
+                geo: '',
+                geo_level: '',
                 startDate: '',
                 endDate: '',
                 numWeek: '',
@@ -55,7 +57,6 @@ export default class QueryForm extends Component {
         console.log(d);
         axios.defaults.xsrfCookieName = 'csrftoken';
         axios.defaults.xsrfHeaderName = "X-CSRFTOKEN";
-        // axios.defaults.headers.post['Content-Type'] = 'application/x-www-form-urlencoded';
         axios
             .post("http://127.0.0.1:8000/query", d)
             //.post("https://healthcare-trends.appspot.com/query", response)
@@ -64,12 +65,24 @@ export default class QueryForm extends Component {
             });
     }
     failureResGoogle = (response) => {
-        if(response.error == 'popup_closed_by_user'){
-            alert("Query was not performed due to user closing the Google Authentication Flow.")
-        }else{
-            alert(response.error + " : " + response.details);
+        //Error Handling for Google Auth Api
+        var err = 'Query could not be performed: ';
+        if (response.error === 'popup_closed_by_user') {
+            err += "The user closed the popup before finishing the sign in flow.";
         }
-        
+        else if (response.error === 'idpiframe_initialization_failed') {
+            err += "Initialization of the Google Auth API failed.\nPlease enable Third Party Cookies";
+        }
+        else if (response.error === 'access_denied') {
+            err += "The user denied the permission to the scopes required";
+        }
+        else if (response.error === 'immediate_failed') {
+            err += "No user could be automatically selected without prompting the consent flow.\nPlease Contact your developer"
+        }
+        else {
+            err += response.error + " : " + response.details;
+        }
+        alert(err);
     }
     getFolderLink() {
         $.get(window.location.href + 'api/submit', (data) => {
@@ -142,7 +155,7 @@ export default class QueryForm extends Component {
                 break;
             case 'numWeek':
                 err.numWeek =
-                    (parseInt(value) < 0) //maybe a or statement??
+                    (parseInt(value) > 0 || !value) //maybe a or statement??
                         ? ''
                         : 'Number must be positive';
                 if (err.numWeek) {
@@ -177,6 +190,14 @@ export default class QueryForm extends Component {
             var startDate = format(subWeeks(parse(this.state.endDate, 'MM/dd/yyyy', new Date()), value), "P");
             this.setState({
                 startDate: startDate
+            });
+        }
+        else if (!this.state.endDate && !this.state.err.endDate) {
+            var endDate = format(subWeeks(new Date(), value - 1), "P");
+            var startDate = format(subWeeks(parse(endDate, 'MM/dd/yyyy', new Date()), value), "P");
+            this.setState({
+                startDate: startDate,
+                endDate: endDate
             });
         }
     }
@@ -246,6 +267,7 @@ export default class QueryForm extends Component {
         var numRuns = this.state.numRuns;
         var freq = this.state.freq;
         var geo = this.state.geo;
+        var geo_level = this.state.geo_level;
         var startDate = this.state.startDate;
         var endDate = this.state.endDate
         var terms = this.state.terms;
@@ -257,6 +279,7 @@ export default class QueryForm extends Component {
                 num_runs: numRuns,
                 freq: freq,
                 geo: geo,
+                geo_level: geo_level,
                 start_date: startDate,
                 end_date: endDate,
                 terms: terms
@@ -293,11 +316,14 @@ export default class QueryForm extends Component {
         err.endDate = '';
         err.numWeek = '';
         err.terms = '';
+        err.geo_level = '';
+        err.geo = '';
         this.setState({
             spreadsheet: '',
             numRuns: '',
             freq: '',
             geo: '',
+            geo_level: '',
             startDate: '',
             endDate: '',
             numWeek: '',
@@ -364,7 +390,6 @@ export default class QueryForm extends Component {
                                     placeholder='Number of Runs'
                                     onChange={this.handleInputChange} />
                             </div>
-                            <br />
                             <div className='field'>
                                 <label>Frequency</label>
                                 <select multiple="" name='freq' className='ui dropdown form-control' onChange={this.handleInputChange}>
@@ -375,52 +400,69 @@ export default class QueryForm extends Component {
                                 </select>
                             </div>
                             <div className='field'>
+                                <label>Geographical Level</label>
+                                <select multiple="" name='geo_level' className='ui dropdown form-control' onChange={this.handleInputChange}>
+                                    <option defaultValue value="country">Country</option>
+                                    <option value="region">Region</option>
+                                    <option value="dma">Nielsen DMA</option>
+                                </select>
+                            </div>
+                            <div className='field'>
                                 <label>Geographical Area </label>
                                 <select multiple="" name='geo' className='ui dropdown form-control' onChange={this.handleInputChange}>
-                                    <option defaultValue value="US">US</option>
+                                    {this.state.geo_level === 'country'
+                                        ? <option defaultValue value="US">US</option>
+                                        : this.state.geo_level === 'region'
+                                            ?geoCodes.region.map((obj) =>
+                                                <option key={obj.code} value={obj.code}>{obj.name} ({obj.code})</option>) 
+                                            : this.state.geo_level === 'dma'
+                                                ?geoCodes.dma.map((obj) => 
+                                                <option key={obj.code} value={obj.code}>{obj.name} ({obj.code})</option>)
+                                                :null
+                                    };
                                 </select>
                             </div>
                         </div>
                         <div className='form-sec'>
                             <div className='form-sec date-level'>
 
-                                    <div className='form-sec-row'>
-                                        <div className='field'>
-                                            <label>Start Date</label>
-                                            <input
-                                                type='text'
-                                                name='startDate'
-                                                className={`form-control date-input 
+                                <div className='form-sec-row'>
+                                    <div className='field'>
+                                        <label>Start Date</label>
+                                        <input
+                                            type='text'
+                                            name='startDate'
+                                            className={`form-control date-input 
                                                 ${this.state.err.startDate ? 'inval' : ''}`}
-                                                placeholder='mm/dd/yyyy'
-                                                value={this.state.startDate}
-                                                onChange={this.handleInputChange} />
-                                        </div>
-                                        <div className='field'>
-                                            <label>End Date</label>
-                                            <input
-                                                type='text'
-                                                name='endDate'
-                                                className={`form-control date-input 
-                                                ${this.state.err.endDate ? 'inval' : ''}`}
-                                                placeholder='mm/dd/yyyy'
-                                                value={this.state.endDate}
-                                                onChange={this.handleInputChange} />
-                                        </div>
+                                            placeholder='mm/dd/yyyy'
+                                            value={this.state.startDate}
+                                            onChange={this.handleInputChange} />
                                     </div>
-                                    <div className='d1'>
-                                        <div className='field date-level date-in'>
-                                            <label>Number of Weeks</label>
-                                            <input
-                                                type='text'
-                                                name='numWeek'
-                                                className={`form-control num-week-input date-input'
+                                    <div className='field'>
+                                        <label>End Date</label>
+                                        <input
+                                            type='text'
+                                            name='endDate'
+                                            className={`form-control date-input 
+                                                ${this.state.err.endDate ? 'inval' : ''}`}
+                                            placeholder='mm/dd/yyyy'
+                                            value={this.state.endDate}
+                                            onChange={this.handleInputChange} />
+                                    </div>
+                                </div>
+                                <div className='d1'>
+                                    <div className='field date-level date-in'>
+                                        <label>Number of Weeks</label>
+                                        <input
+                                            type='text'
+                                            name='numWeek'
+                                            className={`form-control num-week-input date-input'
                                                 ${this.state.err.numWeek ? 'inval' : ''}`}
-                                                placeholder='# Weeks'
-                                                value={this.state.numWeek}
-                                                onChange={this.handleInputChange} />
-                                        </div>
-                                        <div className='field num-w'>
+                                            placeholder='# Weeks'
+                                            value={this.state.numWeek}
+                                            onChange={this.handleInputChange} />
+                                    </div>
+                                    {/* <div className='field num-w'>
                                             <label>End Range Today</label>
                                             <input
                                                 type='checkbox'
@@ -428,15 +470,15 @@ export default class QueryForm extends Component {
                                                 className='form-control date-input endToday'
                                                 value={this.state.endToday}
                                                 onChange={this.handleInputChange} />
-                                        </div>
-                                    </div>
+                                        </div> */}
+                                </div>
                             </div>
                         </div>
                         <div className='field form-sec'>
                             <div className='label'>
                                 <label>Terms</label>
                             </div>
-                            <input
+                            <textarea
                                 type='text'
                                 name='terms'
                                 className={`form-control ' 

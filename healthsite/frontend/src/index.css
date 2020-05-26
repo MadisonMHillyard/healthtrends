@@ -110,7 +110,6 @@ label{
 .form-sec{
   display: flex;
   flex-flow: column wrap;
-  /* margin:0px 4px 0px 0px; */
 }
 .form-sec-row{
   display: flex;
@@ -131,9 +130,7 @@ label{
   border-radius:15px;
   padding:10px
 }
-/* .sub-sec-row{
-  margin-right:4px !important;
-} */
+
 
 .date-range{
   display:flex;
@@ -159,6 +156,35 @@ label{
   text-align: center;
   bottom: 0;
   height:2.5rem;
+}
+
+.control-panel{
+  display:flex;
+  flex-grow: 1;
+  flex-flow: column wrap;
+  background-color: rgb(95,107,119);
+  border-radius:15px;
+  padding:10px;
+  margin: 5px;
+}
+.map-container{
+  display: flex;
+  flex-grow: 8;
+  background-color: rgb(95,107,119);
+  border-radius:15px;
+  padding:10px;
+  margin: 5px;
+}
+.map-page{
+  display:flex;
+  flex-flow: row wrap;
+}
+.map-button{
+  margin: 10px;
+  
+}
+.query-button{
+  margin: 10px;
 }
 /*Medium screens*/
 @media all and (max-width:800px){
