@@ -10,13 +10,10 @@ import GoogleLogin from 'react-google-login';
 import getCookie from './../helper';
 
 
-
 var $ = require('jquery');
 var numRegex = /^\d+/;
 var dateRegex = /^\d{1,2}\/\d{1,2}\/\d{4}$/;
-const responseGoogle = (response) => {
-    console.log(response);
-  }
+
 export default class QueryForm extends Component {
     constructor(props) {
         super(props);
@@ -52,7 +49,28 @@ export default class QueryForm extends Component {
         this.handleNumWeekChange = this.handleNumWeekChange.bind(this);
         this.newQuery = this.newQuery.bind(this);
     }
-
+    successResGoogle = (response) => {
+        var query = this.handleSubmit();
+        var d = { response, query };
+        console.log(d);
+        axios.defaults.xsrfCookieName = 'csrftoken';
+        axios.defaults.xsrfHeaderName = "X-CSRFTOKEN";
+        // axios.defaults.headers.post['Content-Type'] = 'application/x-www-form-urlencoded';
+        axios
+            .post("http://127.0.0.1:8000/query", d)
+            //.post("https://healthcare-trends.appspot.com/query", response)
+            .then(res => {
+                alert(res.data);
+            });
+    }
+    failureResGoogle = (response) => {
+        if(response.error == 'popup_closed_by_user'){
+            alert("Query was not performed due to user closing the Google Authentication Flow.")
+        }else{
+            alert(response.error + " : " + response.details);
+        }
+        
+    }
     getFolderLink() {
         $.get(window.location.href + 'api/submit', (data) => {
             console.log(data);
@@ -222,8 +240,7 @@ export default class QueryForm extends Component {
 
     handleSubmit(e) {
 
-        e.preventDefault();
-        var url = window.location.origin + "/api/submit";
+        // e.preventDefault();
         var folder = this.state.folder;
         var spreadsheet = this.state.spreadsheet;
         var numRuns = this.state.numRuns;
@@ -234,53 +251,28 @@ export default class QueryForm extends Component {
         var terms = this.state.terms;
 
         var data = {
-            folder: folder,
-            spreadsheet: spreadsheet,
-            num_runs: numRuns,
-            freq: freq,
-            geo: geo,
-            start_date: startDate,
-            end_date: endDate,
-            terms: terms
+            query: {
+                folder: folder,
+                spreadsheet: spreadsheet,
+                num_runs: numRuns,
+                freq: freq,
+                geo: geo,
+                start_date: startDate,
+                end_date: endDate,
+                terms: terms
+            }
         };
 
         console.log('DATA', data);
-        // axios.defaults.headers.post['X-CSRF-Token'] = getCookie('csrftoken');
-        axios.defaults.xsrfCookieName = 'csrftoken'
-        axios.defaults.xsrfHeaderName = "X-CSRFTOKEN"
-        axios.defaults.headers.post['Content-Type'] = 'application/x-www-form-urlencoded';
-        axios
-            .post("http://127.0.0.1:8000/query", data)
-            .then(res => {
-                alert(res.data)
-            })
-        // event.preventDefault();
 
-        // if(this.validateInputs(this.state.err)){
-        //     this.togglePopup(e);
-
-        //     $.ajax({
-        //         crossOrigin:true,
-        //         url:url,
-        //         dataType:'json',
-        //         type:'POST',
-        //         data: JSON.stringify(data),
-        //         contentType: 'application/json; charset=utf-8',
-        //         success: function(data){
-        //             this.setState({
-        //                 folderLink:data.message
-        //             });
-        //             // alert(data.message);
-        //         }.bind(this),
-        //         error: function(xhr, status, err){
-        //         alert('Poll creation failed: ' + err.toString());
-        //         }.bind(this)
-        //     });
-        // }
-        // else{
-        //     alert('Some fields have not been filled.')
-        // }
-    }
+        if (this.validateInputs(this.state.err)) {
+            // this.togglePopup(e);
+            return data;
+        } else {
+            alert('Some fields have not been filled.');
+            return null;
+        }
+    };
 
     togglePopup(e) {
         e.preventDefault();
@@ -290,7 +282,7 @@ export default class QueryForm extends Component {
         this.setState({
             showPopup: !this.state.showPopup
         });
-    }
+    };
 
     newQuery() {
         let err = this.state.err;
@@ -329,43 +321,51 @@ export default class QueryForm extends Component {
                     <h2>File Setup</h2>
                     <div className='container drive-sec'>
                         <div className='field'>
-                            <label>Folder Name</label>
-                            <input
-                                type='text'
-                                name='folder'
-                                className={`'form-control ' 
+                            <div className='label'>
+                                <label>Folder Name</label>
+                            </div>
+                            <div >
+                                <input
+                                    type='text'
+                                    name='folder'
+                                    className={`form-control ' 
                                     ${this.state.err.folder ? 'inval' : ''}`}
-                                placeholder='Folder Name'
-                                onChange={this.handleInputChange} />
+                                    placeholder='Folder Name'
+                                    onChange={this.handleInputChange} />
+                            </div>
+
                         </div>
                         <div className='field'>
-                            <label>Spreadsheet Name</label>
-                            <input
-                                type='text'
-                                name='spreadsheet'
-                                className={`'form-control spreadsheet' 
-                                    ${this.state.err.spreadsheet ? 'inval' : ''}`}
-                                placeholder='Spreadsheet Name'
-                                onChange={this.handleInputChange} />
+                            <div className='label'>
+                                <label>Spreadsheet Name</label>
+                            </div>
+                            <div>
+                                <input
+                                    type='text'
+                                    name='spreadsheet'
+                                    className={`form-control ' 
+                                        ${this.state.err.spreadsheet ? 'inval' : ''}`}
+                                    placeholder='Spreadsheet Name'
+                                    onChange={this.handleInputChange} />
+                            </div>
                         </div>
                     </div>
                     <br />
                     <h2>Query</h2>
-                    <div className='container '>
-
+                    <div className='container query-sec'>
                         <div className='form-sec form-sec-row'>
-                            <div className='field sub-sec-row'>
+                            <div className='field'>
                                 <label>Number of Runs </label>
                                 <input
                                     type='text'
                                     name='numRuns'
-                                    className={`'form-control num-runs ' 
+                                    className={`form-control num-runs ' 
                                     ${this.state.err.numRuns ? 'inval' : ''}`}
                                     placeholder='Number of Runs'
                                     onChange={this.handleInputChange} />
                             </div>
                             <br />
-                            <div className='field sub-sec-row'>
+                            <div className='field'>
                                 <label>Frequency</label>
                                 <select multiple="" name='freq' className='ui dropdown form-control' onChange={this.handleInputChange}>
                                     <option defaultValue value="week">Week</option>
@@ -374,7 +374,7 @@ export default class QueryForm extends Component {
                                     <option value="year">Year</option>
                                 </select>
                             </div>
-                            <div className='field sub-sec-row'>
+                            <div className='field'>
                                 <label>Geographical Area </label>
                                 <select multiple="" name='geo' className='ui dropdown form-control' onChange={this.handleInputChange}>
                                     <option defaultValue value="US">US</option>
@@ -382,10 +382,10 @@ export default class QueryForm extends Component {
                             </div>
                         </div>
                         <div className='form-sec'>
-                            <div className='date-range form-sec'>
-                                <div className='date-level'>
-                                    <div className='d1'>
-                                        <div className='field date-in'>
+                            <div className='form-sec date-level'>
+
+                                    <div className='form-sec-row'>
+                                        <div className='field'>
                                             <label>Start Date</label>
                                             <input
                                                 type='text'
@@ -396,7 +396,7 @@ export default class QueryForm extends Component {
                                                 value={this.state.startDate}
                                                 onChange={this.handleInputChange} />
                                         </div>
-                                        <div className='field date-in'>
+                                        <div className='field'>
                                             <label>End Date</label>
                                             <input
                                                 type='text'
@@ -414,7 +414,7 @@ export default class QueryForm extends Component {
                                             <input
                                                 type='text'
                                                 name='numWeek'
-                                                className={`'form-control num-week-input date-input'
+                                                className={`form-control num-week-input date-input'
                                                 ${this.state.err.numWeek ? 'inval' : ''}`}
                                                 placeholder='# Weeks'
                                                 value={this.state.numWeek}
@@ -430,15 +430,16 @@ export default class QueryForm extends Component {
                                                 onChange={this.handleInputChange} />
                                         </div>
                                     </div>
-                                </div>
                             </div>
                         </div>
                         <div className='field form-sec'>
-                            <label>Terms</label>
+                            <div className='label'>
+                                <label>Terms</label>
+                            </div>
                             <input
                                 type='text'
                                 name='terms'
-                                className={`'form-control ' 
+                                className={`form-control ' 
                                 ${this.state.err.terms ? 'inval' : ''}`}
                                 placeholder='Terms'
                                 onChange={this.handleInputChange} />
@@ -446,14 +447,17 @@ export default class QueryForm extends Component {
                     </div>
                     <br />
                     <div className='container for-sec'>
-                        <button className="ui btn btn-primary btn-block" type="submit">Submit</button>
+                        {/* <button className="ui btn btn-primary btn-block" type="submit">Submit</button> */}
                         <GoogleLogin
-                            clientId="658977310896-knrl3gka66fldh83dao2rhgbblmd4un9.apps.googleusercontent.com"
-                            buttonText="Login"
-                            onSuccess={responseGoogle}
-                            onFailure={responseGoogle}
+                            clientId="135294837231-342jgurpklaa1nhg563a986ethc2kdev.apps.googleusercontent.com"
+                            buttonText="Submit Query and Connect to Google Account"
+                            onSuccess={this.successResGoogle}
+                            onFailure={this.failureResGoogle}
                             cookiePolicy={'single_host_origin'}
-                        />,
+                            accessType="offline"
+                            responseType="code"
+                            scope={'https://www.googleapis.com/auth/drive https://www.googleapis.com/auth/spreadsheets https://www.googleapis.com/auth/documents'}
+                        />
                         {this.state.showPopup ?
                             <WorkingPopup
                                 text='Working on the Query'
