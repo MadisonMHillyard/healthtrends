@@ -37,6 +37,20 @@ export default class MapChart extends Component {
                                     stroke="#FFF"
                                     geography={geo}
                                     fill="#DDD"
+                                    style={{
+                                        default: {
+                                          fill: "#D6D6DA",
+                                          outline: "none"
+                                        },
+                                        hover: {
+                                          fill: "#F53",
+                                          outline: "none"
+                                        },
+                                        pressed: {
+                                          fill: "#E42",
+                                          outline: "none"
+                                        }
+                                      }}
                                 />
                             ))}
                             {geographies.map(geo => {
