@@ -14,6 +14,9 @@ import os
 from healthsite import settings
 from django.views.decorators.csrf import csrf_exempt
 from rest_framework.decorators import action
+import json
+from . import backend
+# import requests
 # Create your views here.
 
 drive_service = None
@@ -22,14 +25,15 @@ def index(request):
     return HttpResponseRedirect('home')
     # return render(request, 'healthtrends/index.html')
 
-@login_required
+# @login_required
 def home(request):
-    request.user.gglcred.invalid = False
-    print(request.user.gglcred.invalid)
-    if not request.user.gglcred.invalid:
-        return HttpResponseRedirect('gglogin')
+    # request.user.gglcred.invalid = False
+    # print(request)
+    # if drive_service:
+    # if not request.user.gglcred.invalid:
+    # return HttpResponseRedirect('gglogin')
 
-    return render(request, 'healthtrends/home.html')
+    return render(request, 'healthtrends/gglogin.html')
 
 
 def login(request):
@@ -42,20 +46,23 @@ def login(request):
 @login_required
 def gglogin(request):
     # go through google log in
-    if not request.user.gglcred.invalid:
-        return HttpResponseRedirect('home')
-    if request.user.gglcred.invalid:
-        return render(request, 'healthtrends/gglogin.html')
+    # if not request.user.gglcred.invalid:
+        # return HttpResponseRedirect('home')
+    # if request.user.gglcred.invalid:
+        # return render(request, 'healthtrends/gglogin.html')
     return render(request, 'healthtrends/home.html')
-
-# class LoginView(generic.TemplateView):
-#     template_name = 'healthtrends/gglogin.html'
 
 
 def tokensignin(request):
     auth_code = request.body.decode("utf-8")
+    print('here')
     if not request.headers.get('X-Requested-With'):
-        abort(403)
+        HttpResponse(
+                """
+               Necessary Header: X-Requested-With header not present
+                """,
+                status=403,
+            )
 
     # Set path to the Web application client_secret_*.json file you downloaded from the
     # Google API Console: https://console.developers.google.com/apis/credentials
@@ -68,25 +75,74 @@ def tokensignin(request):
 
     # Call Google API
     http_auth = credentials.authorize(httplib2.Http())
+    service = discovery.build('sheets', 'v4', credentials=credentials)
     drive_service = discovery.build('drive', 'v3', http=http_auth)
-    # appfolder = drive_service.files().get(fileId='appfolder').execute()
-    print(credentials)
+    file_metadata = {
+        'name': 'Invoices',
+        'mimeType': 'application/vnd.google-apps.folder'
+    }
+    file = drive_service.files().create(body=file_metadata,
+                                    fields='id').execute()
+    print('Folder ID: %s' % file.get('id'))
+    sheet_service = service.spreadsheets()
+    print("Here")
+    # health_service = build('trends', 'v1beta',
+    #                 developerKey=HEALTHCARE_API_KEY,
+    #                 discoveryServiceUrl=DISCOVERY_URL)
+    
+    appfolder = drive_service.files().get(fileId='1XI15AwD37VdDZHa6FPGSNuUaP2LBE7Mi').execute()
+    print(appfolder)
     # Get profile info from ID token
-    update_gglcred(request, request.user.id, credentials)
-    userid = credentials.id_token['sub']
-    email = credentials.id_token['email']
+    # update_gglcred(request, request.user.id, credentials)
+    # userid = credentials.id_token['sub']
+    # email = credentials.id_token['email']
     return render(request, 'healthtrends/login.html')
 
 @csrf_exempt
 def query(request):
-    print("HERE")
-    try:
-        print(request.body.decode("utf-8"))
-        if drive_service:
-            return HttpResponse("Please connect to your google account to complete a Query")
-        return HttpResponse("Querying HealthApi")
-    except:
-        return HttpResponse(":( Url is Not Working")
+    if request.method == "POST":
+        if not request.headers.get('X-Requested-With'):
+            HttpResponse(
+                """
+               Necessary Header: X-Requested-With header not present
+                """,
+                status=403,
+            )
+
+        r = json.loads(request.body.decode("utf-8"))
+        auth_code = r['response']['code']
+        query = r['query']
+        if auth_code:
+            CLIENT_SECRET_FILE = CLIENT_SECRET
+            # Exchange auth code for access token, refresh token, and ID token
+            credentials = client.credentials_from_clientsecrets_and_code(
+                CLIENT_SECRET_FILE,
+                ['https://www.googleapis.com/auth/drive', 'https://www.googleapis.com/auth/spreadsheets','https://www.googleapis.com/auth/documents', 'profile', 'email'],
+                auth_code)
+
+            # Call Google API
+            http_auth = credentials.authorize(httplib2.Http())
+
+            sheet_service = discovery.build('sheets', 'v4', credentials=credentials).spreadsheets()
+            drive_service = discovery.build('drive', 'v3', http=http_auth)
+            doc_service = discovery.build('docs', 'v1', credentials=credentials).documents()
+
+            res = backend.debug(drive_service, doc_service, sheet_service, query)
+            return HttpResponse(res)
+
+        if r.get('query'):
+            print(r.get('query'))
+        return HttpResponse("Heyyo")
+
+    else:
+        return HttpResponseRedirect('home')
+    # print(request.body.decode("utf-8"))
+
+    # if not drive_service:
+    #     return HttpResponse("Please connect to your google account to complete Query")
+    # # return HttpResponse("Querying")
+    # except:
+        # return HttpResponse(":( Url is Not Working")
     return HttpResponse(":( Url is Not Working")
     # return render(request, 'healthtrends/query.html')
 
@@ -102,7 +158,6 @@ class FrontendAppView(View):
             with open(os.path.join(settings.REACT_APP_DIR, 'build', 'index.html')) as f:
                 return HttpResponse(f.read())
         except FileNotFoundError:
-            logging.exception('Production build of app not found')
             return HttpResponse(
                 """
                 This URL is only used when you have built the production
@@ -112,15 +167,3 @@ class FrontendAppView(View):
                 status=501,
             )
 
-
-def update_gglcred(request, user_id, credentials):
-    user = User.objects.get(pk=user_id)
-    user.gglcred.invalid = True
-    # user.gglcred.id_token = credentials.id_token
-    # user.gglcred.refresh_token = credentials.refresh_token
-    # user.gglcred.access_token = credentials.get_access_token()
-    user.save()
-
-
-def refresh_gglcred(request, user_id, credentials):
-    user = User.objects.get(pk=user_id)
