@@ -2,13 +2,13 @@ from django.shortcuts import render
 from django.views import generic
 from django.http import HttpResponse
 from django.http import HttpResponseRedirect
-from django.contrib.auth.mixins import LoginRequiredMixin
+# from django.contrib.auth.mixins import LoginRequiredMixin
 from apiclient import discovery
 import httplib2
 from oauth2client import client
 from healthsite.settings import CLIENT_SECRET
-from django.contrib.auth.decorators import login_required
-from django.contrib.auth.models import User
+# from django.contrib.auth.decorators import login_required
+# from django.contrib.auth.models import User
 from django.views.generic import View
 import os
 from healthsite import settings
@@ -16,8 +16,6 @@ from django.views.decorators.csrf import csrf_exempt
 from rest_framework.decorators import action
 import json
 from . import backend
-# import requests
-# Create your views here.
 
 drive_service = None
 
@@ -36,14 +34,14 @@ def home(request):
     return render(request, 'healthtrends/gglogin.html')
 
 
-def login(request):
-    if request.user.is_authenticated:
-        return HttpResponseRedirect('gglogin')
+# def login(request):
+#     if request.user.is_authenticated:
+#         return HttpResponseRedirect('gglogin')
 
-    return render(request, 'healthtrends/login.html')
+#     return render(request, 'healthtrends/login.html')
 
 
-@login_required
+# @login_required
 def gglogin(request):
     # go through google log in
     # if not request.user.gglcred.invalid:
@@ -126,8 +124,8 @@ def query(request):
             sheet_service = discovery.build('sheets', 'v4', credentials=credentials).spreadsheets()
             drive_service = discovery.build('drive', 'v3', http=http_auth)
             doc_service = discovery.build('docs', 'v1', credentials=credentials).documents()
-
-            res = backend.debug(drive_service, doc_service, sheet_service, query)
+            print(query)
+            res = backend.debug(drive_service, doc_service, sheet_service, query['query'])
             return HttpResponse(res)
 
         if r.get('query'):

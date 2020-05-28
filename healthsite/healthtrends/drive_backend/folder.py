@@ -3,7 +3,7 @@ from .spreadsheet import Spreadsheet
 
 class Folder():
 
-    def __init__(self, parent, name, drive_service):
+    def __init__(self, parent_id, name, drive_service):
         """
         creates a folder in the requested google drive
         maintains a list of spreadsheets in this folder
@@ -18,15 +18,19 @@ class Folder():
         self.spreadsheet_list = []
 
         # create folder
+        self.parent_id = parent_id
         self.creation_response = self.create()
-        self.parent = parent
 
     def create(self):
         """
         create the requested folder if the folder does not exist.
         if folder already exists return the requested one
         """
-        q = "mimeType='" + self.mimeType + "' and name = '" + self.name + "'"
+        q = ("mimeType='" + self.mimeType
+             + "' and name = '" + self.name
+             + "' and trashed = false"
+             + " and parents in '" + self.parent_id + "'")
+
         # check if folder exists
         folder = (
                 self.drive_service
@@ -37,6 +41,8 @@ class Folder():
                           pageToken=self.page_token)
                 .execute()
             )
+
+        # if folder does not exist
         if folder['files'] == []:
             # create folder
             file_metadata = {

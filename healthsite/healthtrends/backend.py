@@ -10,12 +10,8 @@ import json
 # import gspread
 import datetime
 import math
-# from keys import *
-# from folder import Folder
-# from spreadsheet import Spreadsheet
-# from sheet import Sheet
-# from query import Query
 import json
+from healthsite.settings import HEALTHCARE_API_KEY
 from .drive_backend import *
 
 # SCOPES = ['https://www.googleapis.com/auth/spreadsheets', 'https://www.googleapis.com/auth/drive']
@@ -27,44 +23,37 @@ DISCOVERY_URL_SUFFIX = '/discovery/v1/apis/trends/' + API_VERSION + '/rest'
 DISCOVERY_URL = SERVER + DISCOVERY_URL_SUFFIX
 
 
-def info_file(info):
-    title = 'Query_Information'
-    body = {
-        'title': title
-    }
-    txt = ("Timestamp: " + datetime.datetime.now().strftime("%A, %d. %B %Y %I:%M%p")
-           + "\nQuery Data: " + info.__str__())
-    print(txt)
-    requests = [
-         {
-            'insertText': {
-                'location': {
-                    'index': 25,
-                },
-                'text': txt
-            }
-        }
-    ]
-    return body, requests
+def debug(drive_service, doc_service, sheet_service, rq: str):
+    health_service = build('trends',
+                           'v1beta',
+                           developerKey=HEALTHCARE_API_KEY,
+                           discoveryServiceUrl=DISCOVERY_URL)
 
+    query = Query(rq['terms'],
+                  rq['geo'],
+                  rq['geo_level'],
+                  rq['freq'],
+                  rq['start_date'],
+                  rq['end_date'],
+                  rq['num_runs'],
+                  health_service)
+    print(query)
+    # # auth
+    # credentials = auth_sheets_api()
 
-def debug(drive_service, doc_service, sheet_service, raw_query: str):
-    print("HEY!!")
-    folder_metadata = {
-        'name': 'Development_Test_Folder!',
-        'mimeType': 'application/vnd.google-apps.folder'
-    }
-    folder = drive_service.files().create(body=folder_metadata,
-                                          fields='id').execute()
-    print('Folder ID: %s' % folder.get('id'))
-    file_body, file_requests = info_file(raw_query)
-    print(file_requests)
-    doc = doc_service.create(body=file_body).execute()
-    print(doc['documentId'])
-    # doc = drive_service.files().create(body=file_body).execute()
-    result = doc_service.batchUpdate(
-        documentId=doc['documentId'], body={'requests': file_requests}).execute()
-    return file.get('id') + " " + result
+    # # build services
+    # sheet_service = build('sheets', 
+    #                       'v4', 
+    #                       credentials=credentials).spreadsheets()
+    # drive_service = build('drive', 
+    #                       'v3', 
+    #                       credentials=credentials)
+    # doc_service = build('docs', 
+    #                     'v1', 
+    #                     credentials=credentials).documents()
+    print("services have been made")
+    return "WOAH THIS WORKED"
+    # debug(drive_service, doc_service, sheet_service, query) 
 
 
 # only increments per WEEK
@@ -191,7 +180,7 @@ def get_folder_link(folder):
     return 'https://drive.google.com/drive/u/1/folders/'+folder.id
 
 
-def run(credentials, folder, spreadsheet, num_runs, freq, geo, start_date, end_date, terms):
+def run_old(credentials, folder, spreadsheet, num_runs, freq, geo, start_date, end_date, terms):
     # print(start_date, end_date)
     # Authenticate Sheets API
     # credentials = auth_sheets_api()

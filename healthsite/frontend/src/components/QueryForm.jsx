@@ -59,7 +59,7 @@ export default class QueryForm extends Component {
         axios.defaults.xsrfHeaderName = "X-CSRFTOKEN";
         axios
             .post("http://127.0.0.1:8000/query", d)
-            //.post("https://healthcare-trends.appspot.com/query", response)
+            // .post("https://healthcare-trends.appspot.com/query", d)
             .then(res => {
                 alert(res.data);
             });

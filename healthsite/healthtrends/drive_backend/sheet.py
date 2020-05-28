@@ -35,7 +35,8 @@ class Sheet():
             spreadsheetId=self.spreadsheet.id, body=request)
         try:
             response = request.execute()
-            self.id = response['replies'][0]['addSheet']['properties']['sheetId']
+            self.id = (response['replies'][0]['addSheet']
+                               ['properties']['sheetId'])
             return response
         except Exception as excep:
             print(excep)
@@ -59,31 +60,44 @@ class Sheet():
             response = request.execute()
             self.spreadsheet.sheet_list.remove(self)
         except Exception as excep:
-            raise excep
+            print(excep)
         return response
 
     def sheet_update(self, body, data_range, start_cell='A1'):
-        result = self.sheet_service.values().update(spreadsheetId=self.spreadsheet.id,
-                                                    range=self.name + '!' + start_cell + ':' +
-                                                    chr(data_range[1][0]) +
-                                                    str(data_range[1][1]),
-                                                    valueInputOption="USER_ENTERED", body=body).execute()
+        result = (self.sheet_service
+                      .values()
+                      .update(spreadsheetId=self.spreadsheet.id,
+                              range=(self.name + '!' + start_cell + ':'
+                                     + chr(data_range[1][0])
+                                     + str(data_range[1][1])),
+                              valueInputOption="USER_ENTERED", body=body)
+                      .execute())
         print('{0} cells updated.'.format(result.get('updatedCells')))
 
         if not body['values']:
             print('No data found.')
 
-    def create_value_batchUpdate_request(self, data, data_range: str, majorDimension: str = "ROWS", start_cell='A1'):
+    def create_value_batchUpdate_request(self, data, data_range: str,
+                                         majorDimension: str = "ROWS",
+                                         start_cell='A1'):
         return {
             "majorDimension": majorDimension,
-            "range": self.create_value_batchUpdate_range(data_range, start_cell),
+            "range": self.create_value_batchUpdate_range(data_range,
+                                                         start_cell),
             "values": data
         }
 
     def create_value_batchUpdate_range(self, data_range, start_cell):
-        return self.name + '!' + start_cell + ':' + chr(data_range[1][0]) + str(data_range[1][1])
+        return (self.name + '!'
+                + start_cell + ':'
+                + chr(data_range[1][0])
+                + str(data_range[1][1]))
 
-    def create_batchUpdate_request(self,  formulaValue: str, offset: int, startRowIndex=1, endRowIndex: int = 2, startColumnIndex=1, endColumnIndex=2, repeatCellNum=False, repeatCell: str = True):
+    def create_batchUpdate_request(self,  formulaValue: str, offset: int,
+                                   startRowIndex=1, endRowIndex: int = 2,
+                                   startColumnIndex=1, endColumnIndex=2,
+                                   repeatCellNum=False,
+                                   repeatCell: str = True):
 
         req = {}
         if repeatCellNum:
@@ -128,13 +142,13 @@ class Sheet():
 
     def sheet_batch_update(self, body, data_range, start_cell='A1'):
         body = {
-            # "requests":[
-            #     {
-
             "data": [
                 {
                     "majorDimension": "ROWS",
-                    "range": self.name + '!' + start_cell + ':' + chr(data_range[1][0]) + str(data_range[1][1]),
+                    "range": (self.name + '!'
+                              + start_cell + ':'
+                              + chr(data_range[1][0])
+                              + str(data_range[1][1])),
                     "values": body
                 },
                 {
@@ -147,15 +161,15 @@ class Sheet():
             "responseDateTimeRenderOption": "FORMATTED_STRING",
             "includeValuesInResponse": False,
             "responseValueRenderOption": "UNFORMATTED_VALUE"
-            #     }
-            # ]
         }
-        # pprint.pprint(body)
         response = self.sheet_service.values().batchUpdate(
             spreadsheetId=self.spreadsheet.id, body=body).execute()
         print('{0} cells updated.'.format(response.get('updatedCells')))
 
-    def add_sum_to_summary_sheet(self, sheet_service, sum_sheet_id, spreadsheet_id, num_terms, num_date_range, run_sheet_name, run_num):
+    def add_sum_to_summary_sheet(self, sheet_service, sum_sheet_id,
+                                 spreadsheet_id, num_terms, num_date_range,
+                                 run_sheet_name, run_num):
+
         print('Summary Sheet add Sums', run_sheet_name, run_num)
         body = {
             "requests": [{
@@ -169,7 +183,9 @@ class Sheet():
                     },
                     "cell": {
                         "userEnteredValue": {
-                            "formulaValue": "=SUM('" + run_sheet_name + "'!B2:" + chr(num_terms+67) + "2)"
+                            "formulaValue": ("=SUM('" + run_sheet_name
+                                             + "'!B2:" + chr(num_terms+67)
+                                             + "2)")
                         }
                     },
                     "fields": "userEnteredValue"

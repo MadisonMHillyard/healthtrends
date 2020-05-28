@@ -4,14 +4,14 @@ from collections import deque
 
 class Spreadsheet():
 
-    def __init__(self, name, drive_service, folder):
+    def __init__(self, name, drive_service, sheet_service, folder):
         """
         creates a spreadsheet in the requested google drive
         maintains a list of sheets in this spreadsheet
         """
         self.folder = folder
         self.drive_service = drive_service
-        self.sheet_service = None
+        self.sheet_service = sheet_service
         self.name = name
         self.mimeType = "application/vnd.google-apps.spreadsheet"
         self.id = None
@@ -22,35 +22,39 @@ class Spreadsheet():
         # create spreadsheet
         self.creation_response = self.create()
 
-        #initialize sheet list 
+        # initialize sheet list
         self.sheet_list = []
 
     def create(self):
         """
-        create the requested spreadsheet if the spreadsheet does not exist. 
+        create the requested spreadsheet if the spreadsheet does not exist.
         if spreadsheet already exists return the requested one
 
         :return: creation response
         """
         # check if spreadsheet exists
-        
-        spreadsheet = self.drive_service.files().list(q="mimeType='"+ self.mimeType +
-                                                    "' and name = '"+ self.name+"'",
-                                          spaces='drive',
-                                          fields='nextPageToken, files(id, name)',
-                                          pageToken=self.folder.page_token).execute()
-                                          
+        q = ("mimeType='" + self.mimeType
+             + "' and name = '" + self.name
+             + "' and parents in '" + self.folder.id + "'")
+        spreadsheet = (self.drive_service
+                           .files()
+                           .list(q=q,
+                                 spaces='drive',
+                                 fields='nextPageToken, files(id, name)',
+                                 pageToken=self.folder.page_token).execute())
+
         if spreadsheet['files'] == []:
             # create spreadsheet
             file_metadata = {
-                    'name':  self.name ,
-                    'mimeType':self.mimeType,
-                    'parents' :[self.folder.id]
+                    'name':  self.name,
+                    'mimeType': self.mimeType,
+                    'parents': [self.folder.id]
                     }
-            spreadsheet = self.drive_service.files().create(body=file_metadata,
-                                                fields='id').execute()
+            spreadsheet = (self.drive_service
+                               .files().create(body=file_metadata,
+                                               fields='id').execute())
             self.id = spreadsheet.get('id')
-        else: 
+        else:
             # return existing spreadsheet
             self.id = spreadsheet['files'][0]['id']
         return spreadsheet
@@ -73,31 +77,33 @@ class Spreadsheet():
         self.sheet_list.append(sheet)
         if name == 'Summary':
             self.summary_sheet = sheet
-        # print(self.sheet_list)
+            self.delete_sheet()
+        print(self.sheet_list)
         return sheet
 
 ## FIX THIS TODO
-    def delete_sheet(self, sheet):
+    def delete_sheet(self, sheet=None):
         """
         delete sheet from the spreadsheet
         """
-        if sheet == None:
+        if sheet is None:
             try:
                 request = {
                     "requests": [
                         {
                             "deleteSheet": {
-                            "sheetId":'0'
+                                "sheetId": '0'
                             }
                         }
                     ]
                 }
-            
-                request = self.sheet_service.batchUpdate(spreadsheetId=self.id, body=request)
+
+                request = self.sheet_service.batchUpdate(spreadsheetId=self.id,
+                                                         body=request)
                 response = request.execute()
             except Exception as excep:
-                raise excep
-        else:   
+                pass
+        else:
             if sheet in self.sheet_list:
                 try:
                     sheet.delete_sheet()
@@ -111,33 +117,35 @@ class Spreadsheet():
     def add_value_request(self, request):
         self.value_requests.append(request)
 
-
     def value_batch_update(self):
-        body = {  
+        body = {
             "data": self.value_requests,
             "valueInputOption": "USER_ENTERED",
             "responseDateTimeRenderOption": "FORMATTED_STRING",
             "includeValuesInResponse": False,
             "responseValueRenderOption": "UNFORMATTED_VALUE"
         }
-        response = self.sheet_service.values().batchUpdate(spreadsheetId=self.id, body=body).execute()
-        print('{0} cells updated.'.format(response.get('updatedCells')))
+        response = (self.sheet_service
+                        .values()
+                        .batchUpdate(spreadsheetId=self.id,
+                                     body=body).execute())
 
+        print('{0} cells updated.'.format(response.get('updatedCells')))
 
     def add_request(self, request):
         if request:
             self.requests.append(request)
-            
+
     def batch_update(self):
         body = {
             "requests": self.requests
         }
-        response = self.sheet_service.batchUpdate(spreadsheetId=self.id, body=body).execute()
+        response = self.sheet_service.batchUpdate(spreadsheetId=self.id,
+                                                  body=body).execute()
         print('{0} cells updated.'.format(len(response.get('replies'))))
 
     def __repr__(self):
         return ('Spreadsheet: {0}\n'
                 'Spreadsheet ID: {1}\n'
                 '\tSheets:{2}').format(self.name, self.id, self.sheet_list)
-
 

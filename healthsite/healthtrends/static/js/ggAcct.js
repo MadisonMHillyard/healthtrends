@@ -21,6 +21,7 @@ $('#signinButton').click(function() {
   auth2.grantOfflineAccess().then(signInCallback);
 });
 function signInCallback(authResult) {
+  console.log('called')
   if (authResult) {
     console.log(authResult)
     // Hide the sign-in button now that the user is authorized, for example:
@@ -38,6 +39,7 @@ function signInCallback(authResult) {
       },
       contentType: 'application/octet-stream; charset=utf-8',
       success: function(result) {
+        console.log("I called----")
         console.log(result)
         return result;
         // Handle or verify the server response.
