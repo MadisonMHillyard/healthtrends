@@ -1,5 +1,4 @@
 import datetime
-q = 'colon cancer, lynch syndrome, hnpcc'
 
 
 class Query():
@@ -46,12 +45,31 @@ class Query():
         return dt
 
     def query_healthcare_api(self, start_date: str, end_date: str):
-        tfh = (self.health_service
+        if self.geo_level == 'dma':
+            tfh = (self.health_service
+                   .getTimelinesForHealth(terms=self.terms,
+                                          time_startDate=start_date,
+                                          time_endDate=end_date,
+                                          timelineResolution=self.freq,
+                                          geoRestriction_dma=self.geo))
+        elif self.geo_level == 'country':
+            tfh = (self.health_service
                    .getTimelinesForHealth(terms=self.terms,
                                           time_startDate=start_date,
                                           time_endDate=end_date,
                                           timelineResolution=self.freq,
                                           geoRestriction_country=self.geo))
+        elif self.geo_level == 'region':
+            tfh = (self.health_service
+                   .getTimelinesForHealth(terms=self.terms,
+                                          time_startDate=start_date,
+                                          time_endDate=end_date,
+                                          timelineResolution=self.freq,
+                                          geoRestriction_region=self.geo))
+        else:
+            raise ValueError("geo_type must be one of 'country',"
+                             " 'region' or 'dma'")
+
         response = tfh.execute()
         return response
 
@@ -64,21 +82,19 @@ class Query():
     def query_format(self, json_data, start_offset=None, end_offset=None):
         term_data = json_data['lines']
         formatted = [["Date", "Sum", "Average"]]
-        data_range = [[65, 1], [65, 1]]
+        data_range = [[65, 1], [67, 1]]
         for term in term_data:
             formatted[0].append(term['term'])
             index = 1
-            data_range[1][0] += 2
+            data_range[1][0] += 1
             for field in term['points']:
-                if data_range[1][0] == 67:
+                if data_range[1][0] == 68:
                     formatted.append([field['date'], "", "", field['value']])
                     index += 1
                 else:
                     formatted[index].append(field['value'])
                     index += 1
             data_range[1][1] = index
-        #
-        # if not self.date_list:
-        #     self.get_date_list(formatted, start_offset)
-        #     print(self.date_list, len(self.date_list))
+            print(data_range)
+            print(formatted)
         return formatted, data_range

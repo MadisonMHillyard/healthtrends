@@ -43,14 +43,10 @@ class Sheet():
 
     def delete_sheet(self):
         request = {
-            "requests": [
-                {
-                    "deleteSheet": {
+            "deleteSheet": {
                         "sheetId": "'" + self.id + "'"
-                    }
-                }
-            ]
-        }
+             }
+         }
         try:
             request = (
                 self.sheet_service

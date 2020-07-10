@@ -89,14 +89,10 @@ class Spreadsheet():
         if sheet == 'sheetID0':
             try:
                 request = {
-                    "requests": [
-                        {
-                            "deleteSheet": {
-                                "sheetId": '0'
-                            }
-                        }
-                    ]
-                }
+                    "deleteSheet": {
+                        "sheetId": '0'
+                     }
+                 }
                 self.add_request(request)
 
             except Exception as excep:
