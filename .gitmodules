@@ -1,0 +1,6 @@
+[submodule "healthsite/google_drive_backend"]
+	path = healthsite/google_drive_backend
+	url = https://github.com/MadisonMHillyard/google_drive_backend.git
+[submodule "healthsite/google-drive-backend"]
+	path = healthsite/google-drive-backend
+	url = https://github.com/MadisonMHillyard/google-drive-backend.git
