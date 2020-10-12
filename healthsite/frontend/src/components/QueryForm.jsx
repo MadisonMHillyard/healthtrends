@@ -1,7 +1,7 @@
 import React, { Component } from 'react';
 // import DateInput from './DateInput';
 import WorkingPopup from './WorkingPopup';
-import { format, addWeeks, subWeeks, parse, isFuture, differenceInWeeks } from 'date-fns'
+import { format, addWeeks, subWeeks, parse, isFuture, isBefore, differenceInWeeks, isAfter } from 'date-fns'
 import axios from "axios";
 import GoogleLogin from 'react-google-login';
 // import getCookie from './../helper';
@@ -28,6 +28,7 @@ export default class QueryForm extends Component {
             startDate: '',
             endDate: '',
             numWeek: '',
+            unitText: "Weeks",
             endToday: false,
             terms: '',
             err: {
@@ -58,12 +59,44 @@ export default class QueryForm extends Component {
         axios.defaults.xsrfCookieName = 'csrftoken';
         axios.defaults.xsrfHeaderName = "X-CSRFTOKEN";
         axios
-            .post("http://localhost:8000/query", d)
-            //.post("https://healthcare-trends.appspot.com/query", d)
+            // .post("http://localhost:8000/query", d)
+            .post("https://healthcare-trends.appspot.com/query", d)
+            
             .then(res => {
+                console.log(res.data);
+                this.openFolder(res.data);
                 alert(res.data);
+            }).catch((error) => {
+                if( error.response ){
+                    console.log(error);
+                    alert(error.response.data);
+                }
             });
     }
+
+    getTimeUnitString = () => {
+        let unitText = this.state.unitText;
+        if (this.state.freq === 'week'){
+            unitText =  "Weeks";
+        }
+        else if (this.state.freq === 'day'){
+            unitText =  "Days";
+        }
+        else if (this.state.freq === 'month'){
+            unitText =  "Months";
+        }
+        else if (this.state.freq === 'year'){
+            unitText =  "Years";
+        }
+        this.setState({
+            unitText: unitText
+        });
+    }
+
+    openFolder = (url) =>{
+        window.open(url, "_blank");
+    }
+    
     failureResGoogle = (response) => {
         //Error Handling for Google Auth Api
         var err = 'Query could not be performed: ';
@@ -84,6 +117,7 @@ export default class QueryForm extends Component {
         }
         alert(err);
     }
+
     getFolderLink() {
         $.get(window.location.href + 'api/submit', (data) => {
             console.log(data);
@@ -94,7 +128,6 @@ export default class QueryForm extends Component {
     handleInputChange(e) {
         const { name, value } = e.target;
         let err = this.state.err;
-        console.log(name, value);
         switch (name) {
             case 'folder':
                 err.folder =
@@ -203,34 +236,50 @@ export default class QueryForm extends Component {
     }
 
     handleDateChange(name, value, err) {
+        const err_state = this.state.err;
+        let val_date = parse(value, 'MM/dd/yyyy', new Date());
         if (!this.state.err.startDate && !this.state.err.endDate) {
             var endDate = this.state.endDate;
             var startDate = this.state.startDate;
             var numWeek = this.state.numWeek;
-            //if endDate
+            
+
+            // if endDate
             if (this.state.startDate && name === 'endDate') {
                 endDate = value;
                 numWeek = differenceInWeeks(parse(endDate, 'MM/dd/yyyy', new Date()), parse(startDate, 'MM/dd/yyyy', new Date()))
             }
-            //if stateDate
+            // if stateDate
             if (this.state.endDate && name === 'startDate') {
                 startDate = value;
                 numWeek = differenceInWeeks(parse(endDate, 'MM/dd/yyyy', new Date()), parse(startDate, 'MM/dd/yyyy', new Date()))
             }
-
-            //if startDate is after endDate 
+            
+            
+            // if date with windowing due to number of runs is before 2004
+            // window_start_date = 
+            // if startDate is after endDate 
             err.numWeek =
                 (numWeek > 0 && numWeek)
                     ? ''
                     : 'Start Date must be before End Date';
-            if (err.numWeek && startDate && endDate) {
-                alert(err.numWeek);
-            }
+
             this.setState({
                 err,
                 numWeek: numWeek
             });
+
+            // if date is before 01/01/2004 
+            if (isBefore(val_date, (new Date(2004, 1, 1)))){
+                err_state[name] = 'Dates before 01/01/2004 not permitted'
+                alert(err_state[name]);
+            }
+            
+            if (err.numWeek && startDate && endDate) {
+                alert(err.numWeek);
+            }
         }
+
         return;
     }
 
@@ -286,8 +335,6 @@ export default class QueryForm extends Component {
             }
         };
 
-        console.log('DATA', data);
-
         if (this.validateInputs(this.state.err)) {
             // this.togglePopup(e);
             return data;
@@ -299,7 +346,6 @@ export default class QueryForm extends Component {
 
     togglePopup(e) {
         e.preventDefault();
-        console.log("TOGGLE POPUP");
         let val = this.validateInputs(this.state.err);
         console.log(val);
         this.setState({
@@ -334,10 +380,8 @@ export default class QueryForm extends Component {
 
     handleNewQuery(e) {
         e.preventDefault();
-        console.log('in Handle new Query')
         this.newQuery();
         this.togglePopup(e);
-        console.log('end of handleNew query')
     }
 
     render() {
@@ -451,8 +495,8 @@ export default class QueryForm extends Component {
                                     </div>
                                 </div>
                                 <div className='d1'>
-                                    <div className='field date-level date-in'>
-                                        <label>Number of Weeks</label>
+                                    {/* <div className='field date-level date-in'>
+                                        <label>Number of {this.state.unitText}</label>
                                         <input
                                             type='text'
                                             name='numWeek'
@@ -461,7 +505,7 @@ export default class QueryForm extends Component {
                                             placeholder='# Weeks'
                                             value={this.state.numWeek}
                                             onChange={this.handleInputChange} />
-                                    </div>
+                                    </div> */}
                                     {/* <div className='field num-w'>
                                             <label>End Range Today</label>
                                             <input
