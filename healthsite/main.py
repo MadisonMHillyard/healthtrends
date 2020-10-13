@@ -39,8 +39,6 @@ def make_query():
             )
 
         r = request.get_json()
-        print(r)
-        print(r['query'])
         auth_code = r['response']['code']
         query = r['query']
         if auth_code:

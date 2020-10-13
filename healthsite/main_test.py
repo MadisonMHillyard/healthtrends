@@ -27,5 +27,4 @@ def test_send_query():
             #               rq['end_date'],
             #               rq['num_runs'],
             #               health_service)
-            print(json.dumps(q))
             r = client.post('/query', json=json.dumps(q))

@@ -1,13 +1,13 @@
 from googleapiclient.discovery import build
 from google.auth.transport.requests import Request
 from googleapiclient.errors import HttpError
-import pprint
 import urllib.request
 import json
 import datetime
 import math
 import json
-from keys import HEALTHCARE_API_KEY, DEVELOPMENT_ROOT_FOLDER, PRODUCTION_ROOT_FOLDER
+from keys import (HEALTHCARE_API_KEY, DEVELOPMENT_ROOT_FOLDER,
+                  PRODUCTION_ROOT_FOLDER)
 from google_drive_backend import *
 
 SERVER = 'https://www.googleapis.com'
@@ -65,7 +65,7 @@ def get_next_run_dates(last_start, last_end, freq):
     # end_offset = i-1
     # run_start_date = last_start
     # run_end_date = last_end
-    
+
     # handle month
     if freq == "month":
         # increment month
@@ -141,26 +141,25 @@ def check_for_and_delete_sheet(spreadsheet, name):
 def debug(drive_service, doc_service, sheet_service, rq: str):
     try:
         health_service = build('trends',
-                            'v1beta',
-                            developerKey=HEALTHCARE_API_KEY,
-                            discoveryServiceUrl=DISCOVERY_URL)
+                               'v1beta',
+                               developerKey=HEALTHCARE_API_KEY,
+                               discoveryServiceUrl=DISCOVERY_URL)
 
         query = Query(rq['terms'],
-                    rq['geo'],
-                    rq['geo_level'],
-                    rq['freq'],
-                    rq['start_date'],
-                    rq['end_date'],
-                    rq['num_runs'],
-                    health_service)
-        
+                      rq['geo'],
+                      rq['geo_level'],
+                      rq['freq'],
+                      rq['start_date'],
+                      rq['end_date'],
+                      rq['num_runs'],
+                      health_service)
+
         if query.num_terms > 30:
-            return ("Error: To many terms.\n" + str(query.num_terms) 
-                    + " terms have been provided. \nThis" 
-                    + " application can only handle less than or equal to 30" 
+            return ("Error: To many terms.\n" + str(query.num_terms)
+                    + " terms have been provided. \nThis"
+                    + " application can only handle less than or equal to 30"
                     + " terms per query.")
-        print(query)
-        print("services have been made")
+
         # create folder
         folder = Folder(PRODUCTION_ROOT_FOLDER,
                         rq['folder'],
@@ -168,13 +167,14 @@ def debug(drive_service, doc_service, sheet_service, rq: str):
 
         # make document and populate Query Information
         # TODO create deletion of earlier query
-        doc = add_query_info_document(drive_service, doc_service, folder, query)
+        doc = add_query_info_document(
+            drive_service, doc_service, folder, query)
 
         # make spreadsheet
         spreadsheet = Spreadsheet(rq['spreadsheet'],
-                                drive_service,
-                                sheet_service,
-                                folder)
+                                  drive_service,
+                                  sheet_service,
+                                  folder)
         # add summary sheet
         spreadsheet.get_sheets()
         sum_sheet = spreadsheet.make_sheet('Summary')
@@ -182,9 +182,7 @@ def debug(drive_service, doc_service, sheet_service, rq: str):
             if sheet.name != 'Summary':
                 spreadsheet.delete_sheet(sheet)
 
-        
-
-        run_list = [['Date','Average']]
+        run_list = [['Date', 'Average']]
         # # make sure dates begin on Sundays
         # # parse dates in datetime format
         # dates = [datetime.datetime.strptime(query.start_date, "%Y-%m-%d"),
@@ -202,11 +200,9 @@ def debug(drive_service, doc_service, sheet_service, rq: str):
             date_format = "%Y"
 
         (run_start, run_end) = get_window_start_date(query)
-        print("Window Start Dates", run_start, run_end)
 
         for i in range(1, query.num_runs+1):
 
-            # print(run_start, run_end, run_end.year)
             # get next run dates
             (run_start, run_end) = get_next_run_dates(
                 run_start, run_end, query.freq)
@@ -219,18 +215,19 @@ def debug(drive_service, doc_service, sheet_service, rq: str):
                 (
                     spreadsheet
                     .add_value_request(sum_sheet
-                                    .create_value_batchUpdate_request(
-                                        query.date_list,
-                                        [
-                                            [65, 1],
-                                            [65, len(query.date_list)]
-                                        ])
-                                    )
+                                       .create_value_batchUpdate_request(
+                                           query.date_list,
+                                           [
+                                               [65, 1],
+                                               [65, len(query.date_list)]
+                                           ])
+                                       )
                 )
 
             # create sheet in spreadsheet for run
-            sheet_name = ('Run ' + str(i) + ' ' + run_start.strftime(date_format)
-                        + ' to ' + run_end.strftime(date_format))
+            sheet_name = ('Run ' + str(i) + ' '
+                          + run_start.strftime(date_format)
+                          + ' to ' + run_end.strftime(date_format))
             run_list[0].append('Sum of Run ' + str(i))
             run_sheet = spreadsheet.make_sheet(sheet_name)
 
@@ -239,62 +236,64 @@ def debug(drive_service, doc_service, sheet_service, rq: str):
             (
                 spreadsheet
                 .add_value_request(run_sheet
-                                .create_value_batchUpdate_request(f_data,
-                                                                    data_range)
-                                )
+                                   .create_value_batchUpdate_request(f_data,
+                                                                     data_range
+                                                                     )
+                                   )
             )
 
             # update sum
             (
                 spreadsheet
                 .add_request(run_sheet
-                            .create_batchUpdate_request(
-                                ("=SUM(D2:" + '{}' + "2)"),
-                                formulaEndColumn=query.num_terms + 67,
-                                startRowIndex=1,
-                                endRowIndex=len(query.date_list),
-                                startColumnIndex=1,
-                                endColumnIndex=2,
-                                offset=query.num_runs-1,
-                                repeatCell=True)
-                            )
+                             .create_batchUpdate_request(
+                                 ("=SUM(D2:" + '{}' + "2)"),
+                                 formulaEndColumn=query.num_terms + 67,
+                                 startRowIndex=1,
+                                 endRowIndex=len(query.date_list),
+                                 startColumnIndex=1,
+                                 endColumnIndex=2,
+                                 offset=query.num_runs-1,
+                                 repeatCell=True)
+                             )
             )
             # update average
             (
                 spreadsheet
                 .add_request(run_sheet
-                            .create_batchUpdate_request(
-                                ("=AVERAGE(D2:"
-                                + '{}'
-                                + "2)"),
-                                formulaEndColumn=query.num_terms + 67,
-                                startRowIndex=1,
-                                endRowIndex=len(query.date_list),
-                                startColumnIndex=2,
-                                endColumnIndex=3,
-                                offset=query.num_runs-1,
-                                repeatCell=True
-                            )
-                            )
+                             .create_batchUpdate_request(
+                                 ("=AVERAGE(D2:"
+                                  + '{}'
+                                  + "2)"),
+                                 formulaEndColumn=query.num_terms + 67,
+                                 startRowIndex=1,
+                                 endRowIndex=len(query.date_list),
+                                 startColumnIndex=2,
+                                 endColumnIndex=3,
+                                 offset=query.num_runs-1,
+                                 repeatCell=True
+                             )
+                             )
             )
             # update summary sheet input
             (
                 spreadsheet
                 .add_request(sum_sheet
-                            .create_batchUpdate_request(
-                                ("=SUM('" + run_sheet.name
-                                + "'!D" + str(2 + (query.num_runs - i-1)) + ":"
-                                + '{}'
-                                + str(2 + (query.num_runs - i-1)) + ")"),
-                                formulaEndColumn=query.num_terms + 67,
-                                startRowIndex=1,
-                                endRowIndex=len(query.date_list),
-                                startColumnIndex=i + 1,
-                                endColumnIndex=i + 2,
-                                offset=0,
-                                repeatCell=True
-                            )
-                            )
+                             .create_batchUpdate_request(
+                                 ("=SUM('" + run_sheet.name
+                                  + "'!D" +
+                                     str(2 + (query.num_runs - i-1)) + ":"
+                                  + '{}'
+                                  + str(2 + (query.num_runs - i-1)) + ")"),
+                                 formulaEndColumn=query.num_terms + 67,
+                                 startRowIndex=1,
+                                 endRowIndex=len(query.date_list),
+                                 startColumnIndex=i + 1,
+                                 endColumnIndex=i + 2,
+                                 offset=0,
+                                 repeatCell=True
+                             )
+                             )
             )
         # END RUN LOOP
 
@@ -302,51 +301,38 @@ def debug(drive_service, doc_service, sheet_service, rq: str):
         (
             spreadsheet
             .add_request(sum_sheet
-                        .create_batchUpdate_request(
-                            ("=AVERAGE(C2:" + '{}' + "2)"),
-                            formulaEndColumn=query.num_terms + 67,
-                            startRowIndex=1,
-                            endRowIndex=len(query.date_list),
-                            startColumnIndex=1,
-                            endColumnIndex=2,
-                            offset=0,
-                            repeatCell=True))
+                         .create_batchUpdate_request(
+                             ("=AVERAGE(C2:" + '{}' + "2)"),
+                             formulaEndColumn=query.num_terms + 67,
+                             startRowIndex=1,
+                             endRowIndex=len(query.date_list),
+                             startColumnIndex=1,
+                             endColumnIndex=2,
+                             offset=0,
+                             repeatCell=True))
         )
         # Add Horizontal run and Average Labels
-        print(len(run_list[0]))
         r = [
-                                        [65, 1],
-                                        [65+len(run_list[0]), 1]
-                                    ]
+            [65, 1],
+            [65+len(run_list[0]), 1]
+        ]
         (
             spreadsheet
             .add_value_request(sum_sheet
-                            .create_value_batchUpdate_request(
-                                    run_list,
-                                    r)
-                            )
+                               .create_value_batchUpdate_request(
+                                   run_list,
+                                   r)
+                               )
         )
-
-        # print(*spreadsheet.requests, sep="\n")
-        # print(*spreadsheet.value_requests, sep="\n")
-
-        # # delete Sheet1
-        # check_for_and_delete_sheet(spreadsheet, "Sheet1")
-
-        # # delete PLACEHOLDER
-        # check_for_and_delete_sheet(spreadsheet, "PLACEHOLDER")
 
         spreadsheet.value_batch_update()
         spreadsheet.batch_update()
         return (get_folder_link(folder))
     except HttpError as e:
-        print(e)
         if e._get_reason() == "Request contains an invalid argument.":
-            print("HERE IS AN ERROR")
             raise e
         raise e
     except Exception as e:
-        print(e)
         raise e
 
 
