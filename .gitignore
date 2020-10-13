@@ -130,7 +130,4 @@ dmypy.json
 
 credentials.json
 keys.py
-htmlcov/
-old/
-hello_world/
-
+.vscode/
