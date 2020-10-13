@@ -1,18 +1,6 @@
-# Copyright 2018 Google Inc. All Rights Reserved.
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#     http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-
 import main
+import json
+from google_drive_backend import *
 
 
 def test_index():
@@ -21,4 +9,23 @@ def test_index():
 
     r = client.get('/')
     assert r.status_code == 200
-    assert 'Hello World' in r.data.decode('utf-8')
+    # assert 'Hello World' in r.data.decode('utf-8')
+
+
+def test_send_query():
+    main.app.testing = True
+    client = main.app.test_client()
+    with open("query_input.json") as jfile:
+        queries = json.load(jfile)['queries']
+        for q in queries:
+            # rq = q['query']
+            # query = Query(rq['terms'],
+            #               rq['geo'],
+            #               rq['geo_level'],
+            #               rq['freq'],
+            #               rq['start_date'],
+            #               rq['end_date'],
+            #               rq['num_runs'],
+            #               health_service)
+            print(json.dumps(q))
+            r = client.post('/query', json=json.dumps(q))

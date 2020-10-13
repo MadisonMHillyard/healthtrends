@@ -1,4 +1,5 @@
 from flask import Flask, Response, redirect, request
+from googleapiclient.errors import HttpError
 from flask_cors import CORS, cross_origin
 from oauth2client import client
 import httplib2
@@ -38,6 +39,7 @@ def make_query():
             )
 
         r = request.get_json()
+        print(r)
         print(r['query'])
         auth_code = r['response']['code']
         query = r['query']
@@ -64,11 +66,15 @@ def make_query():
             doc_service = build('docs',
                                 'v1',
                                 credentials=credentials).documents()
-
-            res = debug(drive_service,
-                        doc_service,
-                        sheet_service,
-                        query['query'])
+            try:
+                res = debug(drive_service,
+                            doc_service,
+                            sheet_service,
+                            query['query'])
+            except HttpError as e:
+                return Response(e._get_reason(), e.resp.status)
+            except Exception as e:
+                return Response("Unknown server-side error", 400)
             return Response(res)
 
         elif query:

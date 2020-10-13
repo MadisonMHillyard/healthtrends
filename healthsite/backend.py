@@ -1,13 +1,14 @@
 from googleapiclient.discovery import build
 from google.auth.transport.requests import Request
+from googleapiclient.errors import HttpError
 import pprint
 import urllib.request
 import json
 import datetime
 import math
 import json
-from keys import HEALTHCARE_API_KEY, DEVELOPMENT_ROOT_FOLDER
-from drive_backend import *
+from keys import HEALTHCARE_API_KEY, DEVELOPMENT_ROOT_FOLDER, PRODUCTION_ROOT_FOLDER
+from google_drive_backend import *
 
 SERVER = 'https://www.googleapis.com'
 
@@ -17,7 +18,7 @@ DISCOVERY_URL = SERVER + DISCOVERY_URL_SUFFIX
 
 
 def add_query_info_document(drive_service, doc_service, folder, query):
-    doc = Document("Dev_test_doc",
+    doc = Document("Query Data Document",
                    drive_service,
                    doc_service,
                    folder)
@@ -37,190 +38,319 @@ def add_query_info_document(drive_service, doc_service, folder, query):
     return doc
 
 
-def get_run_dates(query, mult, i):
-    start_offset = query.num_runs-i
-    end_offset = i-1
+def iterate_month(date: datetime, direction: int = 1):
+    # handle subtract 1 month
+    if direction == 0:
+        # Handle edge case
+        if date.month == 1:
+            date = date.replace(month=12)
+            date = date.replace(year=date.year-1)
+        else:
+            date = date.replace(month=date.month-1)
 
-    run_start_date = ((datetime.datetime.strptime(query.start_date, "%Y-%m-%d")
-                       - datetime.timedelta(weeks=(start_offset)*mult*1))
-                      .strftime('%Y-%m-%d'))
-    run_end_date = ((datetime.datetime.strptime(query.end_date, "%Y-%m-%d")
-                     + datetime.timedelta(weeks=(end_offset)*mult*1))
-                    .strftime('%Y-%m-%d'))
+    # Handle add 1 month
+    else:
+        # Handle edge case
+        if date.month == 12:
+            date = date.replace(month=1)
+            date = date.replace(year=date.year+1)
+        else:
+            date = date.replace(month=date.month+1)
 
-    return run_start_date, run_end_date
+    return date
+
+
+def get_next_run_dates(last_start, last_end, freq):
+    # start_offset = query.num_runs-i
+    # end_offset = i-1
+    # run_start_date = last_start
+    # run_end_date = last_end
+    
+    # handle month
+    if freq == "month":
+        # increment month
+        last_start = iterate_month(last_start)
+        last_end = iterate_month(last_end)
+
+    # handle year
+    elif freq == "year":
+        # increment year
+        last_start = last_start.replace(year=last_start.year+1)
+        last_end = last_end.replace(year=last_end.year+1)
+
+    else:
+        # handle day
+        if freq == "day":
+            end_time_d = datetime.timedelta(days=1)
+            start_time_d = datetime.timedelta(days=1)
+        else:
+            # Default to week frequency
+            end_time_d = datetime.timedelta(weeks=1)
+            start_time_d = datetime.timedelta(weeks=1)
+        last_start = last_start + start_time_d
+        last_end = last_end + end_time_d
+
+    return last_start, last_end
+
+
+def get_window_start_date(query):
+    try:
+        # set window depth for even windowing before and after the queried set
+        runs_before = query.num_runs-1
+
+        # Handle year
+        if query.freq == "year":
+            window_start = query.start_date.replace(
+                year=(query.start_date.year - runs_before))
+
+        # Handle month
+        elif query.freq == "month":
+            window_start = query.start_date
+            for x in range(runs_before):
+                window_start = iterate_month(window_start, 0)
+
+        # Handle day and week default
+        else:
+            window_start = query.start_date
+            if query.freq == "day":
+                start_time_d = datetime.timedelta(days=runs_before)
+            else:
+                start_time_d = datetime.timedelta(weeks=runs_before)
+            window_start = window_start - start_time_d
+
+    except Exception as e:
+        raise e
+    return window_start, query.end_date
+
+
+def check_for_sum_sheet(spreadsheet):
+    for sheets in spreadsheet.sheet_list:
+        if sheets.name == "Summary":
+            return True
+    return False
+
+
+def check_for_and_delete_sheet(spreadsheet, name):
+    for sheet in spreadsheet.sheet_list:
+        if sheet.name == name:
+            return True
+        spreadsheet.delete_sheet(sheet)
+    return False
 
 
 def debug(drive_service, doc_service, sheet_service, rq: str):
-    health_service = build('trends',
-                           'v1beta',
-                           developerKey=HEALTHCARE_API_KEY,
-                           discoveryServiceUrl=DISCOVERY_URL)
+    try:
+        health_service = build('trends',
+                            'v1beta',
+                            developerKey=HEALTHCARE_API_KEY,
+                            discoveryServiceUrl=DISCOVERY_URL)
 
-    query = Query(rq['terms'],
-                  rq['geo'],
-                  rq['geo_level'],
-                  rq['freq'],
-                  rq['start_date'],
-                  rq['end_date'],
-                  rq['num_runs'],
-                  health_service)
-    print(query)
-    print("services have been made")
-    # create folder
-    folder = Folder(DEVELOPMENT_ROOT_FOLDER,
-                    rq['folder'],
-                    drive_service)
+        query = Query(rq['terms'],
+                    rq['geo'],
+                    rq['geo_level'],
+                    rq['freq'],
+                    rq['start_date'],
+                    rq['end_date'],
+                    rq['num_runs'],
+                    health_service)
+        
+        if query.num_terms > 30:
+            return ("Error: To many terms.\n" + str(query.num_terms) 
+                    + " terms have been provided. \nThis" 
+                    + " application can only handle less than or equal to 30" 
+                    + " terms per query.")
+        print(query)
+        print("services have been made")
+        # create folder
+        folder = Folder(PRODUCTION_ROOT_FOLDER,
+                        rq['folder'],
+                        drive_service)
 
-    # make document and populate Query Information
-    # TODO create deletion of earlier query
-    doc = add_query_info_document(drive_service, doc_service, folder, query)
+        # make document and populate Query Information
+        # TODO create deletion of earlier query
+        doc = add_query_info_document(drive_service, doc_service, folder, query)
 
-    # make spreadsheet
-    spreadsheet = Spreadsheet(rq['spreadsheet'],
-                              drive_service,
-                              sheet_service,
-                              folder)
-    # add summary sheet
-    sum_sheet = spreadsheet.add_sheet('Summary', sheet_service)
-    run_list = [['Average']]
-    # make sure dates begin on Sundays
-    # parse dates in datetime format
-    dates = [datetime.datetime.strptime(query.start_date, "%Y-%m-%d"),
-             datetime.datetime.strptime(query.end_date, "%Y-%m-%d")]
-    dates = date_to_start_of_time_unit(dates)
+        # make spreadsheet
+        spreadsheet = Spreadsheet(rq['spreadsheet'],
+                                drive_service,
+                                sheet_service,
+                                folder)
+        # add summary sheet
+        spreadsheet.get_sheets()
+        sum_sheet = spreadsheet.make_sheet('Summary')
+        for sheet in spreadsheet.sheet_list:
+            if sheet.name != 'Summary':
+                spreadsheet.delete_sheet(sheet)
 
-    if query.freq == 'week':
+        
+
+        run_list = [['Date','Average']]
+        # # make sure dates begin on Sundays
+        # # parse dates in datetime format
+        # dates = [datetime.datetime.strptime(query.start_date, "%Y-%m-%d"),
+        #          datetime.datetime.strptime(query.end_date, "%Y-%m-%d")]
+        # dates = date_to_start_of_time_unit(dates, query)
         mult = 1
-    # if query.freq == 'month':
-    #     mult = 4
-    # if query.freq == 'year':
-    #     mult = 52
 
-    for i in range(1, query.num_runs+1):
+        if query.freq == "day":
+            date_format = "%b %d %Y"
+        if query.freq == 'week':
+            date_format = "%b %d %Y"
+        if query.freq == 'month':
+            date_format = "%b %Y"
+        if query.freq == 'year':
+            date_format = "%Y"
 
-        # get individual run dates
-        start, end = get_run_dates(query, mult, i)
+        (run_start, run_end) = get_window_start_date(query)
+        print("Window Start Dates", run_start, run_end)
 
-        # query Health Trends API
-        raw_data = query.query_healthcare_api(start, end)
-        f_data, data_range = query.query_format(raw_data)
+        for i in range(1, query.num_runs+1):
 
-        if i == 1:
-            query.get_date_list(f_data, query.num_runs-1)
+            # print(run_start, run_end, run_end.year)
+            # get next run dates
+            (run_start, run_end) = get_next_run_dates(
+                run_start, run_end, query.freq)
+            # query Health Trends API
+            raw_data = query.query_healthcare_api(run_start, run_end)
+            f_data, data_range = query.query_format(raw_data)
+
+            if i == 1:
+                query.get_date_list(f_data, query.num_runs-1)
+                (
+                    spreadsheet
+                    .add_value_request(sum_sheet
+                                    .create_value_batchUpdate_request(
+                                        query.date_list,
+                                        [
+                                            [65, 1],
+                                            [65, len(query.date_list)]
+                                        ])
+                                    )
+                )
+
+            # create sheet in spreadsheet for run
+            sheet_name = ('Run ' + str(i) + ' ' + run_start.strftime(date_format)
+                        + ' to ' + run_end.strftime(date_format))
+            run_list[0].append('Sum of Run ' + str(i))
+            run_sheet = spreadsheet.make_sheet(sheet_name)
+
+            # update run sheet
+            # update raw values
             (
                 spreadsheet
-                .add_value_request(sum_sheet
-                                   .create_value_batchUpdate_request(
-                                       query.date_list,
-                                       [
-                                           [65, 1],
-                                           [65, len(query.date_list)]
-                                       ])
-                                   )
-             )
+                .add_value_request(run_sheet
+                                .create_value_batchUpdate_request(f_data,
+                                                                    data_range)
+                                )
+            )
 
-        # create sheet in spreadsheet for run
-        sheet_name = 'Run ' + str(i) + ' ' + start + ' to ' + end
-        run_list[0].append('Sum of Run ' + str(i))
-        run_sheet = spreadsheet.add_sheet(sheet_name, sheet_service)
+            # update sum
+            (
+                spreadsheet
+                .add_request(run_sheet
+                            .create_batchUpdate_request(
+                                ("=SUM(D2:" + '{}' + "2)"),
+                                formulaEndColumn=query.num_terms + 67,
+                                startRowIndex=1,
+                                endRowIndex=len(query.date_list),
+                                startColumnIndex=1,
+                                endColumnIndex=2,
+                                offset=query.num_runs-1,
+                                repeatCell=True)
+                            )
+            )
+            # update average
+            (
+                spreadsheet
+                .add_request(run_sheet
+                            .create_batchUpdate_request(
+                                ("=AVERAGE(D2:"
+                                + '{}'
+                                + "2)"),
+                                formulaEndColumn=query.num_terms + 67,
+                                startRowIndex=1,
+                                endRowIndex=len(query.date_list),
+                                startColumnIndex=2,
+                                endColumnIndex=3,
+                                offset=query.num_runs-1,
+                                repeatCell=True
+                            )
+                            )
+            )
+            # update summary sheet input
+            (
+                spreadsheet
+                .add_request(sum_sheet
+                            .create_batchUpdate_request(
+                                ("=SUM('" + run_sheet.name
+                                + "'!D" + str(2 + (query.num_runs - i-1)) + ":"
+                                + '{}'
+                                + str(2 + (query.num_runs - i-1)) + ")"),
+                                formulaEndColumn=query.num_terms + 67,
+                                startRowIndex=1,
+                                endRowIndex=len(query.date_list),
+                                startColumnIndex=i + 1,
+                                endColumnIndex=i + 2,
+                                offset=0,
+                                repeatCell=True
+                            )
+                            )
+            )
+        # END RUN LOOP
 
-        # update run sheet
-        # update raw values
-        (
-            spreadsheet
-            .add_value_request(run_sheet
-                               .create_value_batchUpdate_request(f_data,
-                                                                 data_range)
-                               )
-         )
-
-        # update sum
-        (
-            spreadsheet
-            .add_request(run_sheet
-                         .create_batchUpdate_request(
-                             ("=SUM(D2:" + chr(query.num_terms + 67) + "2)"),
-                             startRowIndex=1,
-                             endRowIndex=len(query.date_list),
-                             startColumnIndex=1,
-                             endColumnIndex=2,
-                             offset=query.num_runs-1,
-                             repeatCell=True)
-                         )
-        )
-        # update average
-        (
-            spreadsheet
-            .add_request(run_sheet
-                         .create_batchUpdate_request(
-                             ("=AVERAGE(D2:"
-                              + chr(query.num_terms + 67)
-                              + "2)"),
-                             startRowIndex=1,
-                             endRowIndex=len(query.date_list),
-                             startColumnIndex=2,
-                             endColumnIndex=3,
-                             offset=query.num_runs-1,
-                             repeatCell=True
-                         )
-                         )
-        )
-        # update summary sheet input
+        # add final Average to summary page
         (
             spreadsheet
             .add_request(sum_sheet
-                         .create_batchUpdate_request(
-                             ("=SUM('" + run_sheet.name
-                              + "'!D" + str(2 + (query.num_runs - i)) + ":"
-                              + chr(query.num_terms + 67)
-                              + str(2 + (query.num_runs - i)) + ")"),
-                             startRowIndex=1,
-                             endRowIndex=len(query.date_list),
-                             startColumnIndex=i + 1,
-                             endColumnIndex=i + 2,
-                             offset=0,
-                             repeatCell=True
-                         )
-                         )
+                        .create_batchUpdate_request(
+                            ("=AVERAGE(C2:" + '{}' + "2)"),
+                            formulaEndColumn=query.num_terms + 67,
+                            startRowIndex=1,
+                            endRowIndex=len(query.date_list),
+                            startColumnIndex=1,
+                            endColumnIndex=2,
+                            offset=0,
+                            repeatCell=True))
         )
-    # END RUN LOOP
+        # Add Horizontal run and Average Labels
+        print(len(run_list[0]))
+        r = [
+                                        [65, 1],
+                                        [65+len(run_list[0]), 1]
+                                    ]
+        (
+            spreadsheet
+            .add_value_request(sum_sheet
+                            .create_value_batchUpdate_request(
+                                    run_list,
+                                    r)
+                            )
+        )
 
-    # add final summation to summary page
-    (
-        spreadsheet
-        .add_request(sum_sheet
-                     .create_batchUpdate_request(
-                         ("=AVERAGE(C2:" + chr(query.num_runs+66) + "2)"),
-                         startRowIndex=1,
-                         endRowIndex=len(query.date_list),
-                         startColumnIndex=1,
-                         endColumnIndex=2,
-                         offset=0,
-                         repeatCell=True))
-     )
-    # Add Horizontal run and Average Labels
-    (
-        spreadsheet
-        .add_value_request(sum_sheet
-                           .create_value_batchUpdate_request(
-                                run_list,
-                                [
-                                    [65, 1],
-                                    [71+len(run_list), 1]
-                                ],
-                                start_cell='B1')
-                           )
-    )
+        # print(*spreadsheet.requests, sep="\n")
+        # print(*spreadsheet.value_requests, sep="\n")
 
-    print(*spreadsheet.requests, sep="\n")
-    print(*spreadsheet.value_requests, sep="\n")
-    spreadsheet.value_batch_update()
-    spreadsheet.batch_update()
-    return ("Link to your Query: \n" + get_folder_link(folder))
+        # # delete Sheet1
+        # check_for_and_delete_sheet(spreadsheet, "Sheet1")
+
+        # # delete PLACEHOLDER
+        # check_for_and_delete_sheet(spreadsheet, "PLACEHOLDER")
+
+        spreadsheet.value_batch_update()
+        spreadsheet.batch_update()
+        return (get_folder_link(folder))
+    except HttpError as e:
+        print(e)
+        if e._get_reason() == "Request contains an invalid argument.":
+            print("HERE IS AN ERROR")
+            raise e
+        raise e
+    except Exception as e:
+        print(e)
+        raise e
 
 
-def date_to_start_of_time_unit(dates):
+def date_to_start_of_time_unit(dates, query):
     for i in range(2):
         if dates[i].weekday() != 6:
             dates[i] = dates[i] - \

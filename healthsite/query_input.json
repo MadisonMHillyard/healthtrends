@@ -1,0 +1,30 @@
+{
+   "queries": [
+       {
+            "query": {
+                "folder": "tests",
+                "spreadsheet": "test2",
+                "num_runs": "6",
+                "freq": "week",
+                "geo": "US",
+                "geo_level": "country",
+                "start_date": "08/28/2019",
+                "end_date": "01/15/2020",
+                "terms": "Angelina Jolie, angelina jolie surgery, angelina jolie health"
+            }
+        },
+        {
+            "query": {
+                "folder": "tests",
+                "spreadsheet": "test2",
+                "num_runs": "6",
+                "freq": "week",
+                "geo": "US",
+                "geo_level": "country",
+                "start_date": "08/28/2019",
+                "end_date": "01/15/2020",
+                "terms": "Angelina Jolie, angelina jolie surgery, angelina jolie health"
+            }
+        }
+    ]
+}
